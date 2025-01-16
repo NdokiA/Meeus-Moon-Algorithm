@@ -1,6 +1,14 @@
 from jdCalc import julianCalc
 import json 
-from math import sin, cos
+import math
+
+#override sin and cos function that accept degree
+def toRadian(degree):
+    return degree*math.pi/180
+
+sin = lambda x: math.sin(toRadian(x))
+cos = lambda x: math.cos(toRadian(x))
+
 
 def reduceAngle(func):
     """A decorator that processes that reduce large angles into less than 360#"""
@@ -47,12 +55,13 @@ class moonPosition:
     
     @reduceAngle
     def sun_mean_anomaly(self):
-        M = (357.5391092 + 35999.0502909*self.T - 0.0001536*self.T**2 + self.T**3/24490000)
+        M = (357.5291092 + 35999.0502909*self.T - 0.0001536*self.T**2 + self.T**3/24490000)
         return M 
     
     @reduceAngle 
     def moon_mean_anomaly(self):
-        m2 = (134.9636964+ 477198.8675055*self.T+ 0.0087414*self.T**2+ self.T**3/69699- self.T**4/14712000)
+        m2 = (134.9633964+ 477198.8675055*self.T+ 0.0087414*self.T**2+ self.T**3/69699- self.T**4/14712000)
+        return m2
     
     @reduceAngle
     def moon_latitude_arguments(self):
@@ -78,20 +87,21 @@ class moonPosition:
         E = 1 - 0.002516*self.T - 0.0000074*self.T 
         return E 
     
-    def _compute_coef(self, coef_dataset, coef_number = None, cor_ecc = True):
+    def _compute_coef(self, coef_dataset, coef_number = None, cor_ecc = True, use_sin = True):
         sum_all = 0
         E = self.E if cor_ecc else 1
         terms = coef_number if coef_number else len(coef_dataset)
+        func = sin if use_sin else cos
         
         for coef in coef_dataset[:terms]:
-            one_term = coef[4]*sin(coef[0]*self.D + coef[1]*self.M + coef[2]*self.m2 + coef[3]*self.F)
+            param = coef[0]*self.D + coef[1]*self.M + coef[2]*self.m2 + coef[3]*self.F
+            one_term = coef[4]*func(param)
             if abs(coef[1]) == 1:
                 one_term*=E
-            elif abs(one_term[1] == 2):
+            elif abs(coef[1]) == 2:
                 one_term*=E**2
             sum_all += one_term
         
-        #KOREKSI, UNTUK PERHITUNGAN DISTANCE, PAKAI COS BUKAN SIN
         return sum_all
     
     def compute_long_cor(self, coef_number = None, cor_ecc = True, cor_else = True):
@@ -103,7 +113,7 @@ class moonPosition:
         return long_cor
     
     def compute_dist_cor(self, coef_number = None, cor_ecc = True):
-        dist_cor = self._compute_coef(self.distance, coef_number, cor_ecc)
+        dist_cor = self._compute_coef(self.distance, coef_number, cor_ecc, use_sin=False)
         
         return dist_cor
     
@@ -112,7 +122,7 @@ class moonPosition:
         
         if cor_else:
             lat_cor += (-2235*sin(self.L) + 382*sin(self.A3) + 175*sin(self.A1-self.F) + 175*sin(self.A1+self.F) +
-                            127*sin(self.L-self.M)-115*sin(self.L+self.M) )
+                            127*sin(self.L-self.m2)-115*sin(self.L+self.m2) )
         
         return lat_cor
     
@@ -126,4 +136,6 @@ class moonPosition:
         delta_ = 385000.56 + dist_cor/1e3
         
         return lambda_, beta_, delta_
-            
+
+mP = moonPosition(12, 4, 1992)
+print(mP.compute_moon_coord())
