@@ -5,7 +5,7 @@ class julianCalc:
     """
 
     @staticmethod
-    def compute_JD(day: int, month: int, year: int) -> float:
+    def compute_JD(day: float, month: int, year: int) -> float:
         """
         Compute Julian Date of given day, month, and year in gregorian calendar
 
